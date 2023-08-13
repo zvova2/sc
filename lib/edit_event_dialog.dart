@@ -179,7 +179,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
       actions: [
         TextButton(
           onPressed: () async {
-            
+
               final SharedPreferences prefs = await SharedPreferences.getInstance();
               String? userId = prefs.getString("user_id");
 
