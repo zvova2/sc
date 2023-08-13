@@ -74,7 +74,13 @@ class _EditEventDialogState extends State<EditEventDialog> {
     endDateTime = DateTime.parse (widget.event.end);
     notesController = TextEditingController(text: widget.event.description); // Инициализируйте его здесь с описанием события.
     notes = widget.event.description;
-    // ваши остальные поля...
+
+    _loadIntervalValue().then((_) {
+
+      endDateTime = startDateTime.add(defaultDuration);
+      setState(() {});
+    });
+
   }
   Future<void> _loadIntervalValue() async {
     String intervalValue = await _settingsService.getIntervalValue();
@@ -84,9 +90,9 @@ class _EditEventDialogState extends State<EditEventDialog> {
   Future<void> _selectStartDateTime(BuildContext context) async {
     final DateTime? picked = await showOmniDateTimePicker(
       context: context,
-      initialDate: startDateTime ?? DateTime.now(),
-      firstDate: DateTime(1600).subtract(Duration(days: 3652)),
-      lastDate: DateTime.now().add(Duration(days: 3652)),
+      initialDate: startDateTime,
+      firstDate: DateTime(1600).subtract(const Duration(days: 3652)),
+      lastDate: DateTime.now().add(const Duration(days: 3652)),
       is24HourMode: false,
       isShowSeconds: false,
       minutesInterval: 30,
@@ -103,9 +109,9 @@ class _EditEventDialogState extends State<EditEventDialog> {
   Future<void> _selectEndDateTime(BuildContext context) async {
     final DateTime? picked = await showOmniDateTimePicker(
       context: context,
-      initialDate: endDateTime ?? (startDateTime ?? DateTime.now()).add(defaultDuration),
-      firstDate: DateTime(1600).subtract(Duration(days: 3652)),
-      lastDate: DateTime.now().add(Duration(days: 3652)),
+      initialDate: endDateTime,
+      firstDate: DateTime(1600).subtract(const Duration(days: 3652)),
+      lastDate: DateTime.now().add(const Duration(days: 3652)),
       is24HourMode: false,
       isShowSeconds: false,
       minutesInterval: 30,
@@ -127,7 +133,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
           borderRadius: BorderRadius.all(Radius.circular(32.0))),
       contentPadding: const EdgeInsets.only(top: 10.0),
 
-      title: const Text('Add new Event'),
+      title: const Text('Edit Event'),
       content: SingleChildScrollView(
 
         child: Column(
@@ -138,9 +144,9 @@ class _EditEventDialogState extends State<EditEventDialog> {
                 children: [
                   const Text('From: '),
                   Text(
-                    startDateTime!= null ? DateFormat('h:mm a').format(startDateTime!) : 'Not set',
+                    DateFormat('h:mm a').format(startDateTime),
 
-                    style: TextStyle(color: Colors.black),
+                    style: const TextStyle(color: Colors.black),
                   ),
                 ],
               ),
@@ -151,9 +157,10 @@ class _EditEventDialogState extends State<EditEventDialog> {
                 children: [
                   const Text('To: '),
                   Text(
-                    endDateTime!= null ? DateFormat('h:mm a').format(endDateTime!) : 'Not set',
+                    DateFormat('h:mm a').format(endDateTime),
                     style: const TextStyle(color: Colors.black),
-                  ),
+                  )
+
                 ],
               ),
             ),
@@ -172,7 +179,7 @@ class _EditEventDialogState extends State<EditEventDialog> {
       actions: [
         TextButton(
           onPressed: () async {
-            if(startDateTime != null && endDateTime != null){
+            
               final SharedPreferences prefs = await SharedPreferences.getInstance();
               String? userId = prefs.getString("user_id");
 
@@ -181,17 +188,15 @@ class _EditEventDialogState extends State<EditEventDialog> {
               bool success = await editEvent(
                 eventId: eventIdInt,
                 description: notes ?? "",
-                startDate: startDateTime!.toIso8601String(),
-                endDate: endDateTime!.toIso8601String(),
+                startDate: startDateTime.toIso8601String(),
+                endDate: endDateTime.toIso8601String(),
                 userIds: userId != null ? [userId] : [],
               );
               if(success){
                 widget.onDialogClosed();
                 Navigator.pop(context);
               }
-            } else {
-              print("Please make sure all fields are filled.");
-            }
+
           },
           child: const Text('Update'),
         )

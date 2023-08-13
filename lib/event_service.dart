@@ -25,12 +25,22 @@ Future<List<Event>> loadEvents() async {
 }
 
 Future<List<Event>> getEvents() async {
-  List<Event> localEvents = await loadEvents();
-  fetchAndCompareEventsFromServer(localEvents);
-  return localEvents;
+  try {
+    // Попытка загрузить события с сервера и сравнить с локальными
+    List<Event> localEvents = await loadEvents();
+    await fetchAndCompareEventsFromServer(localEvents);
+    // Загрузка обновленных событий из локального хранилища
+    return await loadEvents();
+  } catch (e) {
+    // Если произошла ошибка (например, нет интернета), загружаем из локального хранилища
+    print('Failed to fetch or compare events from server, loading from local storage: $e');
+    return await loadEvents();
+  }
 }
 
-void fetchAndCompareEventsFromServer(List<Event> localEvents) async {
+
+
+Future<void> fetchAndCompareEventsFromServer(List<Event> localEvents) async {
   try {
     List<Event> serverEvents = await fetchEvents();
     if (!areEventsEqual(localEvents, serverEvents)) {

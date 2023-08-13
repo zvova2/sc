@@ -12,7 +12,7 @@ import 'package:sc/constants.dart';
 import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:maps_launcher/maps_launcher.dart';
-
+import 'package:sc/edit_event_dialog.dart';
 
 Future<bool> completeEvent(int eventId) async {
   var url = Uri.parse('$baseUrl/eventHandler.php');
@@ -74,8 +74,8 @@ Future<bool> restartEvent(int eventId) async {
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
-  Hive.registerAdapter(EventAdapter()); // Регистрация адаптера
-  runApp(MyApp());
+  Hive.registerAdapter(EventAdapter());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
@@ -88,7 +88,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: InitialPage(),
+      home: const InitialPage(),
       routes: {
         '/home': (context) => MainLayout(child: HomePage()),
         '/login': (context) => LoginPage(),
@@ -178,7 +178,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Events"),
+        title: Text("Events - ${DateFormat.yMMMd().format(DateTime.now())}"),
         actions: <Widget>[
           IconButton(
             icon: Icon(Icons.calendar_today),
@@ -227,6 +227,7 @@ class _HomePageState extends State<HomePage> {
                     isCompleted: event.status == 'completed',
                     completeEventAndUpdate: completeEventAndUpdate, // Передаем колбэк
                     restartEventAndUpdate: restartEventAndUpdate,
+                    refreshEvents: () => refreshEvents(),
                   );
                 },
               );
@@ -246,11 +247,13 @@ class EventTile extends StatefulWidget {
   final bool isCompleted;
   final Function(int) completeEventAndUpdate; // Добавляем параметр
   final Function(int) restartEventAndUpdate; // Добавляем параметр
+  final void Function() refreshEvents;
   const EventTile({
     required Key key,
     required this.event,
     required this.completeEventAndUpdate, // Передаем функцию
     required this.restartEventAndUpdate,
+    required this.refreshEvents,
     this.isCompleted = false,
   }) : super(key: key);
 
@@ -312,7 +315,7 @@ class _EventTileState extends State<EventTile> {
               },
             ),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.start,
               children: <Widget>[
                 Flexible(
                   child: Text("${widget.event.phone1Desc}: ${widget.event.phone1}"),
@@ -343,7 +346,7 @@ class _EventTileState extends State<EventTile> {
             ),
             if(widget.event.phone2Desc.isNotEmpty && widget.event.phone2.isNotEmpty)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
                   Flexible(
                     child: Text("${widget.event.phone2Desc}: ${widget.event.phone2}"),
@@ -374,7 +377,7 @@ class _EventTileState extends State<EventTile> {
               ),
             if(widget.event.phone3Desc.isNotEmpty && widget.event.phone3.isNotEmpty)
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: <Widget>[
                   Flexible(
                     child: Text("${widget.event.phone3Desc}: ${widget.event.phone3}"),
@@ -405,41 +408,85 @@ class _EventTileState extends State<EventTile> {
               ),
             const Text("Assigned to:"),
             Text(widget.event.assignedTo.join(', ')),
-            TextButton(
-              onPressed: () async {
-                setState(() {
-                  _isCompleted = !_isCompleted;
-                });
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
 
-                bool success;
-                if (_isCompleted) {
-                  success = await widget.completeEventAndUpdate(int.parse(widget.event.id));
-                } else {
-                  success = await widget.restartEventAndUpdate(int.parse(widget.event.id));
-                }
+    children: <Widget>[
 
 
-                if (!success) {
-                  setState(() {
-                    _isCompleted = !_isCompleted;
-                  });
-                }
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: _isCompleted ? Colors.red : Colors.green,
-              ),
-              child: Text(_isCompleted ? "RESTART" : "COMPLETE"),
+      TextButton(
+        onPressed: () async {
+          setState(() {
+            _isCompleted = !_isCompleted;
+          });
+
+          bool success;
+          if (_isCompleted) {
+            success = await widget.completeEventAndUpdate(int.parse(widget.event.id));
+          } else {
+            success = await widget.restartEventAndUpdate(int.parse(widget.event.id));
+          }
+
+
+          if (!success) {
+            setState(() {
+              _isCompleted = !_isCompleted;
+            });
+          }
+        },
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: _isCompleted ? Colors.red : Colors.green,
+        ),
+        child: Text(_isCompleted ? "RESTART" : "COMPLETE"),
+      ),
+      const SizedBox(width: 8), // Добавьте пространство между кнопками
+      TextButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return EditEventDialog(
+                event: widget.event,
+                onDialogClosed: widget.refreshEvents,
+
+              );
+            },
+          );
+        },
+        style: TextButton.styleFrom(
+          foregroundColor: Colors.white,
+          backgroundColor: Colors.blue, // Выберите цвет, который вам нравится
+        ),
+        child: const Text("EDIT"),
+      ),
+    ],
             ),
-
-
-
       ]
         else ...[
             if(widget.event.description.isNotEmpty)
               Text(widget.event.description),
             const Text("Assigned to:"),
             Text(widget.event.assignedTo.join(', ')),
+            TextButton(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (BuildContext context) {
+                    return EditEventDialog(
+                      event: widget.event,
+                      onDialogClosed: widget.refreshEvents,
+
+                    );
+                  },
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.blue, // Выберите цвет, который вам нравится
+              ),
+              child: const Text("EDIT"),
+            ),
           ],
 
           ],
